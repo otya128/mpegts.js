@@ -842,7 +842,7 @@ class TSDemuxer extends BaseDemuxer {
                                 if (this.audio_init_segment_dispatched_ == false || this.detectAudioMetadataChange(sample)) {
                                     this.audio_metadata_ = meta;
                                     // flush stashed frames before notify new AudioSpecificConfig
-                                    this.dispatchAudioMediaSegment();
+                                    this.dispatchAudioMediaSegment(true);
                                     // notify new AAC AudioSpecificConfig
                                     this.dispatchAudioInitSegment(sample);
                                 }
@@ -948,7 +948,7 @@ class TSDemuxer extends BaseDemuxer {
                 } else if (this.detectVideoMetadataChange(null, details) === true) {
                     this.video_metadata_changed_ = true;
                     // flush stashed frames before changing codec metadata
-                    this.dispatchVideoMediaSegment();
+                    this.dispatchVideoMediaSegment(true);
 
                     const av1c = new Uint8Array((new ArrayBuffer(this.video_metadata_.av1c.byteLength + details.sequence_header_data.byteLength)));
                     av1c.set(this.video_metadata_.av1c, 0);
@@ -1013,7 +1013,7 @@ class TSDemuxer extends BaseDemuxer {
                     if (this.video_metadata_.sps && this.video_metadata_.pps) {
                         if (this.video_metadata_changed_) {
                             // flush stashed frames before changing codec metadata
-                            this.dispatchVideoMediaSegment();
+                            this.dispatchVideoMediaSegment(true);
                         }
                         // notify new codec metadata (maybe changed)
                         this.dispatchVideoInitSegment();
@@ -1096,7 +1096,7 @@ class TSDemuxer extends BaseDemuxer {
                     if (this.video_metadata_.vps && this.video_metadata_.sps && this.video_metadata_.pps) {
                         if (this.video_metadata_changed_) {
                             // flush stashed frames before changing codec metadata
-                            this.dispatchVideoMediaSegment();
+                            this.dispatchVideoMediaSegment(true);
                         }
                         // notify new codec metadata (maybe changed)
                         this.dispatchVideoInitSegment();
@@ -1251,18 +1251,18 @@ class TSDemuxer extends BaseDemuxer {
         }
     }
 
-    private dispatchVideoMediaSegment() {
+    private dispatchVideoMediaSegment(force = false) {
         if (this.isInitSegmentDispatched()) {
-            if (this.video_track_.length) {
-                this.onDataAvailable(null, this.video_track_);
+            if (this.video_track_.length || force) {
+                this.onDataAvailable(null, this.video_track_, force);
             }
         }
     }
 
-    private dispatchAudioMediaSegment() {
+    private dispatchAudioMediaSegment(force = false) {
         if (this.isInitSegmentDispatched()) {
-            if (this.audio_track_.length) {
-                this.onDataAvailable(this.audio_track_, null);
+            if (this.audio_track_.length || force) {
+                this.onDataAvailable(this.audio_track_, null, force);
             }
         }
     }
@@ -1337,7 +1337,7 @@ class TSDemuxer extends BaseDemuxer {
                     channel_config: aac_frame.channel_config
                 };
                 // flush stashed frames before notify new AudioSpecificConfig
-                this.dispatchAudioMediaSegment();
+                this.dispatchAudioMediaSegment(true);
                 // notify new AAC AudioSpecificConfig
                 this.dispatchAudioInitSegment(audio_sample);
             }
@@ -1429,7 +1429,7 @@ class TSDemuxer extends BaseDemuxer {
                     channel_config: aac_frame.channel_config
                 };
                 // flush stashed frames before notify new AudioSpecificConfig
-                this.dispatchAudioMediaSegment();
+                this.dispatchAudioMediaSegment(true);
                 // notify new AAC AudioSpecificConfig
                 this.dispatchAudioInitSegment(audio_sample);
             }
@@ -1504,7 +1504,7 @@ class TSDemuxer extends BaseDemuxer {
                     channel_mode: ac3_frame.channel_mode,
                 };
                 // flush stashed frames before notify new AudioSpecificConfig
-                this.dispatchAudioMediaSegment();
+                this.dispatchAudioMediaSegment(true);
                 // notify new AAC AudioSpecificConfig
                 this.dispatchAudioInitSegment(audio_sample);
             }
@@ -1576,7 +1576,7 @@ class TSDemuxer extends BaseDemuxer {
                     channel_mode: eac3_frame.channel_mode,
                 };
                 // flush stashed frames before notify new AudioSpecificConfig
-                this.dispatchAudioMediaSegment();
+                this.dispatchAudioMediaSegment(true);
                 // notify new AAC AudioSpecificConfig
                 this.dispatchAudioInitSegment(audio_sample);
             }
@@ -1745,7 +1745,7 @@ class TSDemuxer extends BaseDemuxer {
                 channel_count
             };
             // flush stashed frames before notify new AudioSpecificConfig
-            this.dispatchAudioMediaSegment();
+            this.dispatchAudioMediaSegment(true);
             // notify new AAC AudioSpecificConfig
             this.dispatchAudioInitSegment(audio_sample);
         }
