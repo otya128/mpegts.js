@@ -270,6 +270,9 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
         transmuxer.on(TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED, (private_data: any) => {
             emitPlayerEventsExtraData(PlayerEvents.PES_PRIVATE_DATA_ARRIVED, private_data);
         });
+        transmuxer.on(TransmuxingEvents.DURATION_AVAILABLE, (duration: number) => {
+            mse_controller.onDurationAvailable(duration);
+        });
 
         transmuxer.open();
     }
