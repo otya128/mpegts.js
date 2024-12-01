@@ -41,11 +41,12 @@ import {RuntimeException, IllegalStateException, InvalidArgumentException} from 
 // Manage IO Loaders
 class IOController {
 
-    constructor(dataSource, config, extraData) {
+    constructor(dataSource, config, extraData, context) {
         this.TAG = 'IOController';
 
         this._config = config;
         this._extraData = extraData;
+        this._context = context; // undefined or 'probe'
 
         this._stashInitialSize = 64 * 1024;  // default initial size: 64KB
         if (config.stashInitialSize != undefined && config.stashInitialSize > 0) {
@@ -253,7 +254,7 @@ class IOController {
     }
 
     _createLoader() {
-        this._loader = new this._loaderClass(this._seekHandler, this._config);
+        this._loader = new this._loaderClass(this._seekHandler, this._config, this._context);
         if (this._loader.needStashBuffer === false) {
             this._enableStash = false;
         }

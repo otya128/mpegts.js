@@ -264,8 +264,10 @@ declare namespace Mpegts {
         abort(): void;
     }
 
+    type LoaderContext = 'probe';
+
     interface CustomLoaderConstructor {
-        new(seekHandler: SeekHandler, config: Config): BaseLoader;
+        new(seekHandler: SeekHandler, config: Config, context?: LoaderContext): BaseLoader;
     }
 
     interface Range {

@@ -86,7 +86,7 @@ class MMTTLVSeekLocator implements SeekLocator {
     }
 
     probeFirstTimestamp(start: number, probeSize: number, abortSignal?: AbortSignal): Promise<ProbeFirstTimestampResult> {
-        const ioctl = new IOController(this.mediaDataSource_, this.config_);
+        const ioctl = new IOController(this.mediaDataSource_, this.config_, 0, 'probe');
         const reader = new MMTTLVReader();
         let mpt_packet_id: number | undefined;
         reader.addEventListener('plt', (e) => {
@@ -212,7 +212,7 @@ class MMTTLVSeekLocator implements SeekLocator {
 
     // TODO: probe last decodable timestamp instead of first decodable timestamp
     async probeLastTimestamp(start: number, probeSize?: number) {
-        const ioctl = new IOController(this.mediaDataSource_, this.config_, 0);
+        const ioctl = new IOController(this.mediaDataSource_, this.config_, 0, 'probe');
         const reader = new MMTTLVReader();
         let mpt_packet_id: number | undefined;
         reader.addEventListener('plt', (e) => {
