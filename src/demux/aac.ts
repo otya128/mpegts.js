@@ -163,17 +163,7 @@ export class AACLOASParser {
         }
     }
 
-    private getLATMValue(gb: ExpGolomb) {
-        let bytesForValue = gb.readBits(2);
-        let value = 0;
-        for (let i = 0; i <= bytesForValue; i++) {
-            value = value << 8;
-            value = value | gb.readByte();
-        }
-        return value;
-    }
-
-    public readNextAACFrame(privious?: LOASAACFrame): LOASAACFrame | null {
+    public readNextAACFrame(previous?: LOASAACFrame): LOASAACFrame | null {
         let data = this.data_;
         let aac_frame: LOASAACFrame = null;
 
@@ -193,119 +183,7 @@ export class AACLOASParser {
                 break;
             }
 
-            // AudioMuxElement(1)
-            let gb = new ExpGolomb(data.subarray(offset + 3, offset + 3 + audioMuxLengthBytes));
-            let useSameStreamMux = gb.readBool();
-            let streamMuxConfig: LOASAACFrame | null = null;
-            if (!useSameStreamMux) {
-                let audioMuxVersion = gb.readBool();
-                let audioMuxVersionA = audioMuxVersion && gb.readBool();
-                if (audioMuxVersionA) {
-                    Log.e(this.TAG, 'audioMuxVersionA is Not Supported');
-                    gb.destroy();
-                    break;
-                }
-                if (audioMuxVersion) {
-                    this.getLATMValue(gb);
-                }
-                let allStreamsSameTimeFraming = gb.readBool();
-                if (!allStreamsSameTimeFraming) {
-                    Log.e(this.TAG, 'allStreamsSameTimeFraming zero is Not Supported');
-                    gb.destroy();
-                    break;
-                }
-                let numSubFrames = gb.readBits(6);
-                if (numSubFrames !== 0) {
-                    Log.e(this.TAG, 'more than 2 numSubFrames Not Supported');
-                    gb.destroy();
-                    break;
-                }
-                let numProgram = gb.readBits(4);
-                if (numProgram !== 0) {
-                    Log.e(this.TAG, 'more than 2 numProgram Not Supported');
-                    gb.destroy();
-                    break;
-                }
-                let numLayer = gb.readBits(3);
-                if (numLayer !== 0) {
-                    Log.e(this.TAG, 'more than 2 numLayer Not Supported');
-                    gb.destroy();
-                    break;
-                }
-
-                let fillBits = audioMuxVersion ? this.getLATMValue(gb) : 0;
-                let audio_object_type = gb.readBits(5); fillBits -= 5;
-                let sampling_freq_index = gb.readBits(4);fillBits -= 4;
-                let channel_config = gb.readBits(4); fillBits -= 4;
-                gb.readBits(3); fillBits -= 3; // GA Specfic Config
-                if (fillBits > 0) { gb.readBits(fillBits); }
-
-                let frameLengthType = gb.readBits(3);
-                if (frameLengthType === 0) {
-                    gb.readByte();
-                } else {
-                    Log.e(this.TAG, `frameLengthType = ${frameLengthType}. Only frameLengthType = 0 Supported`);
-                    gb.destroy();
-                    break;
-                }
-
-                let otherDataPresent = gb.readBool();
-                if (otherDataPresent) {
-                    if (audioMuxVersion) {
-                        this.getLATMValue(gb);
-                    } else {
-                        let otherDataLenBits = 0;
-                        while (true) {
-                            otherDataLenBits = otherDataLenBits << 8;
-                            let otherDataLenEsc = gb.readBool();
-                            let otherDataLenTmp = gb.readByte();
-                            otherDataLenBits += otherDataLenTmp
-                            if (!otherDataLenEsc) { break; }
-                        }
-                        console.log(otherDataLenBits)
-                    }
-                }
-
-                let crcCheckPresent = gb.readBool();
-                if (crcCheckPresent) {
-                    gb.readByte();
-                }
-
-                streamMuxConfig = new LOASAACFrame();
-                streamMuxConfig.audio_object_type = audio_object_type;
-                streamMuxConfig.sampling_freq_index = sampling_freq_index;
-                streamMuxConfig.sampling_frequency = MPEG4SamplingFrequencies[streamMuxConfig.sampling_freq_index];
-                streamMuxConfig.channel_config = channel_config;
-                streamMuxConfig.other_data_present = otherDataPresent;
-            } else if (privious == null) {
-                Log.w(this.TAG, 'StreamMuxConfig Missing')
-                this.current_syncword_offset_ = this.findNextSyncwordOffset(offset + 3 + audioMuxLengthBytes);
-                gb.destroy();
-                continue;
-            } else {
-                streamMuxConfig = privious;
-            }
-
-            let length = 0;
-            while (true) {
-                let tmp = gb.readByte();
-                length += tmp;
-                if (tmp !== 0xFF) { break; }
-            }
-
-            let aac_data = new Uint8Array(length);
-            for (let i = 0; i < length; i++) {
-                aac_data[i] = gb.readByte();
-            }
-
-            aac_frame = new LOASAACFrame();
-            aac_frame.audio_object_type = (streamMuxConfig.audio_object_type) as MPEG4AudioObjectTypes;
-            aac_frame.sampling_freq_index = (streamMuxConfig.sampling_freq_index) as MPEG4SamplingFrequencyIndex;
-            aac_frame.sampling_frequency = MPEG4SamplingFrequencies[streamMuxConfig.sampling_freq_index];
-            aac_frame.channel_config = streamMuxConfig.channel_config;
-            aac_frame.other_data_present = streamMuxConfig.other_data_present;
-            aac_frame.data = aac_data;
-
+            aac_frame = readAudioMuxElement(data.subarray(offset + 3, offset + 3 + audioMuxLengthBytes), previous);
             this.current_syncword_offset_ = this.findNextSyncwordOffset(offset + 3 + audioMuxLengthBytes);
         }
 
@@ -323,6 +201,132 @@ export class AACLOASParser {
 
         return this.data_.subarray(this.current_syncword_offset_);
     }
+}
+
+function getLATMValue(gb: ExpGolomb) {
+    let bytesForValue = gb.readBits(2);
+    let value = 0;
+    for (let i = 0; i <= bytesForValue; i++) {
+        value = value << 8;
+        value = value | gb.readByte();
+    }
+    return value;
+}
+
+export function readAudioMuxElement(data: Uint8Array, previous?: LOASAACFrame): LOASAACFrame | null {
+    const TAG = 'readAudioMuxElement';
+    // AudioMuxElement(1)
+    let gb = new ExpGolomb(data);
+    let useSameStreamMux = gb.readBool();
+    let streamMuxConfig: LOASAACFrame | null = null;
+    if (!useSameStreamMux) {
+        let audioMuxVersion = gb.readBool();
+        let audioMuxVersionA = audioMuxVersion && gb.readBool();
+        if (audioMuxVersionA) {
+            Log.e(TAG, 'audioMuxVersionA is Not Supported');
+            gb.destroy();
+            return;
+        }
+        if (audioMuxVersion) {
+            getLATMValue(gb);
+        }
+        let allStreamsSameTimeFraming = gb.readBool();
+        if (!allStreamsSameTimeFraming) {
+            Log.e(TAG, 'allStreamsSameTimeFraming zero is Not Supported');
+            gb.destroy();
+            return;
+        }
+        let numSubFrames = gb.readBits(6);
+        if (numSubFrames !== 0) {
+            Log.e(TAG, 'more than 2 numSubFrames Not Supported');
+            gb.destroy();
+            return;
+        }
+        let numProgram = gb.readBits(4);
+        if (numProgram !== 0) {
+            Log.e(TAG, 'more than 2 numProgram Not Supported');
+            gb.destroy();
+            return;
+        }
+        let numLayer = gb.readBits(3);
+        if (numLayer !== 0) {
+            Log.e(TAG, 'more than 2 numLayer Not Supported');
+            gb.destroy();
+            return;
+        }
+
+        let fillBits = audioMuxVersion ? getLATMValue(gb) : 0;
+        let audio_object_type = gb.readBits(5); fillBits -= 5;
+        let sampling_freq_index = gb.readBits(4);fillBits -= 4;
+        let channel_config = gb.readBits(4); fillBits -= 4;
+        gb.readBits(3); fillBits -= 3; // GA Specfic Config
+        if (fillBits > 0) { gb.readBits(fillBits); }
+
+        let frameLengthType = gb.readBits(3);
+        if (frameLengthType === 0) {
+            gb.readByte();
+        } else {
+            Log.e(TAG, `frameLengthType = ${frameLengthType}. Only frameLengthType = 0 Supported`);
+            gb.destroy();
+            return;
+        }
+
+        let otherDataPresent = gb.readBool();
+        if (otherDataPresent) {
+            if (audioMuxVersion) {
+                getLATMValue(gb);
+            } else {
+                let otherDataLenBits = 0;
+                while (true) {
+                    otherDataLenBits = otherDataLenBits << 8;
+                    let otherDataLenEsc = gb.readBool();
+                    let otherDataLenTmp = gb.readByte();
+                    otherDataLenBits += otherDataLenTmp
+                    if (!otherDataLenEsc) { break; }
+                }
+                console.log(otherDataLenBits)
+            }
+        }
+
+        let crcCheckPresent = gb.readBool();
+        if (crcCheckPresent) {
+            gb.readByte();
+        }
+
+        streamMuxConfig = new LOASAACFrame();
+        streamMuxConfig.audio_object_type = audio_object_type;
+        streamMuxConfig.sampling_freq_index = sampling_freq_index;
+        streamMuxConfig.sampling_frequency = MPEG4SamplingFrequencies[streamMuxConfig.sampling_freq_index];
+        streamMuxConfig.channel_config = channel_config;
+        streamMuxConfig.other_data_present = otherDataPresent;
+    } else if (previous == null) {
+        Log.w(TAG, 'StreamMuxConfig Missing')
+        gb.destroy();
+        return;
+    } else {
+        streamMuxConfig = previous;
+    }
+
+    let length = 0;
+    while (true) {
+        let tmp = gb.readByte();
+        length += tmp;
+        if (tmp !== 0xFF) { break; }
+    }
+
+    let aac_data = new Uint8Array(length);
+    for (let i = 0; i < length; i++) {
+        aac_data[i] = gb.readByte();
+    }
+
+    const aac_frame = new LOASAACFrame();
+    aac_frame.audio_object_type = (streamMuxConfig.audio_object_type) as MPEG4AudioObjectTypes;
+    aac_frame.sampling_freq_index = (streamMuxConfig.sampling_freq_index) as MPEG4SamplingFrequencyIndex;
+    aac_frame.sampling_frequency = MPEG4SamplingFrequencies[streamMuxConfig.sampling_freq_index];
+    aac_frame.channel_config = streamMuxConfig.channel_config;
+    aac_frame.other_data_present = streamMuxConfig.other_data_present;
+    aac_frame.data = aac_data;
+    return aac_frame;
 }
 
 export class AudioSpecificConfig {

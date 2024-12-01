@@ -19,7 +19,12 @@ export class H265NaluHVC1 {
     type: H265NaluType;
     data: Uint8Array;
 
-    constructor(nalu: H265NaluPayload) {
+    constructor(nalu: H265NaluPayload | Uint8Array) {
+        if (nalu instanceof Uint8Array) {
+            this.type = (nalu[4] >> 1) & 0x3F;
+            this.data = nalu;
+            return;
+        }
         let nalu_size = nalu.data.byteLength;
 
         this.type = nalu.type;

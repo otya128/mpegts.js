@@ -4,6 +4,8 @@
         "allowJs": true,
         "sourceMap": true,
         "module": "es6",
+        "moduleResolution": "bundler",
+        "resolvePackageJsonExports": false,
         "target": "es5",
         "experimentalDecorators": true,
         "declaration": true,

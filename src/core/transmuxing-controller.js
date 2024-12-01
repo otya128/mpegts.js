@@ -27,6 +27,8 @@ import DemuxErrors from '../demux/demux-errors.js';
 import IOController from '../io/io-controller.js';
 import TransmuxingEvents from './transmuxing-events';
 import {LoaderStatus, LoaderErrors} from '../io/loader.js';
+import MMTTLVDemuxer from '../demux/mmttlv-demuxer';
+import MMTTLVSeekLocator from '../seek/mmttlv-seek-locator';
 
 // Transmuxing (IO, Demuxing, Remuxing) controller, with multipart support
 class TransmuxingController {
@@ -261,6 +263,9 @@ class TransmuxingController {
             this._demuxer.timestampBase = this._mediaDataSource.segments[this._currentSegmentIndex].timestampBase;
 
             consumed = this._demuxer.parseChunks(data, byteStart);
+        } else if (this._mediaDataSource.type === 'mmttlv') {
+            this._setupMMTTLVDemuxerRemuxer();
+            consumed = this._demuxer.parseChunks(data, byteStart);
         } else {
             // byteStart == 0, Initial data, probe it first
             let probeData = null;
@@ -354,6 +359,26 @@ class TransmuxingController {
 
         this._remuxer.onInitSegment = this._onRemuxerInitSegmentArrival.bind(this);
         this._remuxer.onMediaSegment = this._onRemuxerMediaSegmentArrival.bind(this);
+    }
+
+    _setupMMTTLVDemuxerRemuxer() {
+        let demuxer = this._demuxer = new MMTTLVDemuxer(this._config);
+
+        if (!this._remuxer) {
+            this._remuxer = new MP4Remuxer(this._config);
+        }
+
+        demuxer.onError = this._onDemuxException.bind(this);
+        demuxer.onMediaInfo = this._onMediaInfo.bind(this);
+
+        this._remuxer.bindDataSource(this._demuxer);
+        this._demuxer.bindDataSource(this._ioctl);
+
+        this._remuxer.onInitSegment = this._onRemuxerInitSegmentArrival.bind(this);
+        this._remuxer.onMediaSegment = this._onRemuxerMediaSegmentArrival.bind(this);
+        if (!this._config.isLive) {
+            this._seekLocator = new MMTTLVSeekLocator(this._mediaDataSource, this._config, (d) => this._emitter.emit(TransmuxingEvents.DURATION_AVAILABLE, d));
+        }
     }
 
     _onMediaInfo(mediaInfo) {
