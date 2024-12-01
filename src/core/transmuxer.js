@@ -316,6 +316,9 @@ class Transmuxer {
         }
     }
 
+    switchAudioTrack(index) {
+        this._controller.switchAudioTrack(index);
+    }
 }
 
 export default Transmuxer;

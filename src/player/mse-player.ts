@@ -141,6 +141,11 @@ class MSEPlayer {
         return this._player_engine.statisticsInfo;
     }
 
+    public switchAudioTrack(index: number): void {
+        this._player_engine.switchAudioTrack(index);
+        this._player_engine.resetAudio();
+    }
+
 }
 
 export default MSEPlayer;

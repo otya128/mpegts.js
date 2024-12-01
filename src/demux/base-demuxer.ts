@@ -52,4 +52,5 @@ export default abstract class BaseDemuxer {
     abstract parseChunks(chunk: ArrayBuffer, byteStart: number): number;
 
     public insertDiscontinuity(): void {}
+    public switchAudioTrack(index: number): void {}
 }

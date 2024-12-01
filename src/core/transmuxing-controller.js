@@ -595,6 +595,10 @@ class TransmuxingController {
         this._emitter.emit(TransmuxingEvents.STATISTICS_INFO, info);
     }
 
+    switchAudioTrack(index) {
+        this._demuxer.switchAudioTrack(index);
+    }
+
 }
 
 export default TransmuxingController;

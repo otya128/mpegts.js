@@ -465,6 +465,13 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
         return stat_info;
     }
 
+    switchAudioTrack(index: number): void {
+        throw new Error("stub");
+    }
+
+    resetAudio(): void {
+        throw new Error("stub");
+    }
 }
 
 export default PlayerEngineDedicatedThread;

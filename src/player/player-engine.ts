@@ -31,4 +31,6 @@ export default interface PlayerEngine {
     seek(seconds: number): void;
     readonly mediaInfo: MediaInfo | undefined;
     readonly statisticsInfo: any | undefined;
+    switchAudioTrack(index: number): void;
+    resetAudio(): void;
 }

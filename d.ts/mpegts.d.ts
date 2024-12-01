@@ -339,6 +339,7 @@ declare namespace Mpegts {
          * @since 1.4
          */
         statisticsInfo: NativePlayerStatisticsInfo | MSEPlayerStatisticsInfo;
+        switchAudioTrack(index: number): void;
     }
 
     interface NativePlayerStatisticsInfo {

@@ -288,10 +288,14 @@ class MSEController {
         }
     }
 
-    flush() {
+    flush(flush_type) {
         // remove all appended buffers
         for (let type in this._sourceBuffers) {
             if (!this._sourceBuffers[type]) {
+                continue;
+            }
+
+            if (flush_type != null && flush_type !== type) {
                 continue;
             }
 
