@@ -71,6 +71,7 @@ class Transmuxer {
             ctl.on(TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED, this._onPESPrivateDataArrived.bind(this));
             ctl.on(TransmuxingEvents.STATISTICS_INFO, this._onStatisticsInfo.bind(this));
             ctl.on(TransmuxingEvents.RECOMMEND_SEEKPOINT, this._onRecommendSeekpoint.bind(this));
+            ctl.on(TransmuxingEvents.DURATION_AVAILABLE, this._onDurationAvailable.bind(this));
         }
     }
 
@@ -251,6 +252,12 @@ class Transmuxer {
         });
     }
 
+    _onDurationAvailable(seconds) {
+        Promise.resolve().then(() => {
+            this._emitter.emit(TransmuxingEvents.DURATION_AVAILABLE, seconds);
+        });
+    }
+
     _onLoggingConfigChanged(config) {
         if (this._worker) {
             this._worker.postMessage({cmd: 'logging_config', param: config});
@@ -291,6 +298,7 @@ class Transmuxer {
             case TransmuxingEvents.PES_PRIVATE_DATA_DESCRIPTOR:
             case TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED:
             case TransmuxingEvents.STATISTICS_INFO:
+            case TransmuxingEvents.DURATION_AVAILABLE:
                 this._emitter.emit(message.msg, data);
                 break;
             case TransmuxingEvents.IO_ERROR:

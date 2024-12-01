@@ -60,6 +60,7 @@ class MSEController {
 
         this._requireSetMediaDuration = false;
         this._pendingMediaDuration = 0;
+        this._onDurationAvailableCalled = false;
 
         this._pendingSourceBufferInit = [];
         this._mimeTypes = {
@@ -432,13 +433,20 @@ class MSEController {
         let current = this._mediaSource.duration;
         let target = this._pendingMediaDuration;
 
-        if (target > 0 && (isNaN(current) || target > current)) {
+        if (target > 0 && (isNaN(current) || (current === Infinity && this._onDurationAvailableCalled) || target > current)) {
             Log.v(this.TAG, `Update MediaSource duration from ${current} to ${target}`);
             this._mediaSource.duration = target;
         }
 
         this._requireSetMediaDuration = false;
+        this._onDurationAvailableCalled = false;
         this._pendingMediaDuration = 0;
+    }
+
+    onDurationAvailable(duration) {
+        this._requireSetMediaDuration = true;
+        this._onDurationAvailableCalled = true;
+        this._pendingMediaDuration = duration;
     }
 
     _doRemoveRanges() {

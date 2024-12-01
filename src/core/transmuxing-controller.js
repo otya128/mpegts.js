@@ -84,6 +84,7 @@ class TransmuxingController {
         this._pendingResolveSeekPoint = null;
 
         this._statisticsReporter = null;
+        this._seekLocator = null;
     }
 
     destroy() {
@@ -171,6 +172,24 @@ class TransmuxingController {
 
     seek(milliseconds) {
         if (this._mediaInfo == null || !this._mediaInfo.isSeekable()) {
+            const seekLocator = this._seekLocator;
+            if (seekLocator == null) {
+                return;
+            }
+            if (this._pendingSeekAbortController != null) {
+                this._pendingSeekAbortController.abort();
+                this._pendingSeekAbortController = null;
+            }
+            this._pendingSeekAbortController = new AbortController();
+            seekLocator.locateSeekPosition(milliseconds, this._pendingSeekAbortController.signal).then((from) => {
+                this._internalAbort();
+                this._remuxer.seek();
+                this._remuxer.insertDiscontinuity();
+                this._demuxer.insertDiscontinuity();
+                this._loadSegment(this._currentSegmentIndex, from);
+            }).catch((e) => {
+                Log.e(this.TAG, `seek to ${milliseconds} failed: ${e}`);
+            });
             return;
         }
 
