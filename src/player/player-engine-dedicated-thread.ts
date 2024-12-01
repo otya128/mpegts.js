@@ -79,6 +79,8 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
 
     private e?: any = null;
 
+    private _prev_ready_state = 0;
+
     public static isSupported(): boolean {
         if (!self.Worker) {
             return false;
@@ -175,7 +177,16 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
 
         this._media_element.addEventListener('loadedmetadata', this.e.onMediaLoadedMetadata);
         this._media_element.addEventListener('timeupdate', this.e.onMediaTimeUpdate);
-        this._media_element.addEventListener('readystatechange', this.e.onMediaReadyStateChanged);
+        this._media_element.addEventListener('emptied', this.e.onMediaReadyStateChanged);
+        this._media_element.addEventListener('ended', this.e.onMediaReadyStateChanged);
+        this._media_element.addEventListener('waiting', this.e.onMediaReadyStateChanged);
+        this._media_element.addEventListener('canplay', this.e.onMediaReadyStateChanged);
+        this._media_element.addEventListener('canplaythrough', this.e.onMediaReadyStateChanged);
+        this._media_element.addEventListener('loadstart', this.e.onMediaReadyStateChanged);
+        this._media_element.addEventListener('loadeddata', this.e.onMediaReadyStateChanged);
+        this._media_element.addEventListener('loadedmetadata', this.e.onMediaReadyStateChanged);
+        this._media_element.addEventListener('progress', this.e.onMediaReadyStateChanged);
+        this._media_element.addEventListener('stalled', this.e.onMediaReadyStateChanged);
 
         this._worker.postMessage({
             cmd: 'initialize_mse',
@@ -193,7 +204,16 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
             // Remove all appended event listeners
             this._media_element.removeEventListener('loadedmetadata', this.e.onMediaLoadedMetadata);
             this._media_element.removeEventListener('timeupdate', this.e.onMediaTimeUpdate);
-            this._media_element.removeEventListener('readystatechange', this.e.onMediaReadyStateChanged);
+            this._media_element.removeEventListener('emptied', this.e.onMediaReadyStateChanged);
+            this._media_element.removeEventListener('ended', this.e.onMediaReadyStateChanged);
+            this._media_element.removeEventListener('waiting', this.e.onMediaReadyStateChanged);
+            this._media_element.removeEventListener('canplay', this.e.onMediaReadyStateChanged);
+            this._media_element.removeEventListener('canplaythrough', this.e.onMediaReadyStateChanged);
+            this._media_element.removeEventListener('loadstart', this.e.onMediaReadyStateChanged);
+            this._media_element.removeEventListener('loadeddata', this.e.onMediaReadyStateChanged);
+            this._media_element.removeEventListener('loadedmetadata', this.e.onMediaReadyStateChanged);
+            this._media_element.removeEventListener('progress', this.e.onMediaReadyStateChanged);
+            this._media_element.removeEventListener('stalled', this.e.onMediaReadyStateChanged);
 
             // Detach media source from media element
             this._media_element.src = '';
@@ -353,10 +373,14 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
         } as WorkerCommandPacketTimeUpdate);
     }
 
-    private _onMediaReadyStateChange(e: any): void {
+    private _onMediaReadyStateChange(): void {
+        if (this._media_element == null || this._prev_ready_state === this._media_element?.readyState) {
+            return;
+        }
+        this._prev_ready_state = this._media_element.readyState;
         this._worker.postMessage({
             cmd: 'readystatechange',
-            ready_state: e.target.readyState,
+            ready_state: this._media_element.readyState,
         } as WorkerCommandPacketReadyStateChange);
     }
 
