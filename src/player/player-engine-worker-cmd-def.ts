@@ -28,7 +28,9 @@ export type WorkerCommandOp =
     | 'timeupdate'
     | 'readystatechange'
     | 'pause_transmuxer'
-    | 'resume_transmuxer';
+    | 'resume_transmuxer'
+    | 'switch_audio_track'
+    | 'reset_audio';
 
 export type WorkerCommandPacket = {
     cmd: WorkerCommandOp,
@@ -58,4 +60,14 @@ export type WorkerCommandPacketTimeUpdate = WorkerCommandPacket & {
 export type WorkerCommandPacketReadyStateChange = WorkerCommandPacket & {
     cmd: 'readystatechange',
     ready_state: number,
+};
+
+export type WorkerCommandPacketSwitchAudioTrack = WorkerCommandPacket & {
+    cmd: 'switch_audio_track',
+    index: number,
+};
+
+export type WorkerCommandPacketResetAudio = WorkerCommandPacket & {
+    cmd: 'reset_audio',
+    milliseconds: number,
 };

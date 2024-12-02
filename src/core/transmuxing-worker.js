@@ -100,6 +100,9 @@ let TransmuxingWorker = function (self) {
                 }
                 break;
             }
+            case 'switch_audio_track':
+                controller.switchAudioTrack(e.data.param);
+                break;
         }
     });
 

@@ -33,6 +33,8 @@ import {
     WorkerCommandPacketUnbufferedSeek,
     WorkerCommandPacketTimeUpdate,
     WorkerCommandPacketReadyStateChange,
+    WorkerCommandPacketSwitchAudioTrack,
+    WorkerCommandPacketResetAudio,
 } from './player-engine-worker-cmd-def.js';
 import {
     WorkerMessagePacket,
@@ -129,6 +131,17 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
             case 'resume_transmuxer':
                 transmuxer.resume();
                 break;
+            case 'switch_audio_track': {
+                const packet = command_packet as WorkerCommandPacketSwitchAudioTrack;
+                transmuxer.switchAudioTrack(packet.index);
+                break;
+            }
+            case 'reset_audio': {
+                const packet = command_packet as WorkerCommandPacketResetAudio;
+                mse_controller.flush('audio');
+                transmuxer.seek(packet.milliseconds);
+                break;
+            }
         }
     });
 
