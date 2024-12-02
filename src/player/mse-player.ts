@@ -144,7 +144,6 @@ class MSEPlayer {
 
     public switchAudioTrack(index: number): void {
         this._player_engine.switchAudioTrack(index);
-        this._player_engine.resetAudio();
     }
 
 }
