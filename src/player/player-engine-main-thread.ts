@@ -448,11 +448,10 @@ class PlayerEngineMainThread implements PlayerEngine {
 
     switchAudioTrack(index: number): void {
         this._transmuxer.switchAudioTrack(index);
-    }
-
-    resetAudio(): void {
-        this._mse_controller.flush("audio");
-        this._transmuxer.seek(Math.floor(this._media_element.currentTime * 1000));
+        if (!this._config.isLive) {
+            this._mse_controller.flush("audio");
+            this._transmuxer.seek(Math.floor(this._media_element.currentTime * 1000));
+        }
     }
 }
 

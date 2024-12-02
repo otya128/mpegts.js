@@ -87,7 +87,6 @@ class MMTTLVDemuxer extends BaseDemuxer {
 
     private video_track_ = {type: 'video', id: 1, sequenceNumber: 0, samples: [], length: 0};
     private audio_track_ = {type: 'audio', id: 2, sequenceNumber: 0, samples: [], length: 0};
-    private audio_track_pend_ = null;
 
     private reader_ = new MMTTLVReader();
 
@@ -100,10 +99,14 @@ class MMTTLVDemuxer extends BaseDemuxer {
     private video_extended_timestamps_: Map<number, MPUExtendedTimestamp> = new Map();
 
     private audio_packet_id_?: number;
-    private audio_timestamp_desc_?: MPUTimestampDescriptor;
-    private audio_timestamps_: Map<number, MPUTimestamp> = new Map();
-    private audio_extended_timestamp_desc_?: MPUExtendedTimestampDescriptor;
-    private audio_extended_timestamps_: Map<number, MPUExtendedTimestamp> = new Map();
+    // { PID: MPUTimestampDescriptor }
+    private audio_timestamp_desc_: Map<number, MPUTimestampDescriptor> = new Map();
+    // { PID: { mpu_sequence_number: MPUTimestamp } }
+    private audio_timestamps_: Map<number, Map<number, MPUTimestamp>> = new Map();
+    // { PID: MPUExtendedTimestampDescriptor }
+    private audio_extended_timestamp_desc_: Map<number, MPUExtendedTimestampDescriptor> = new Map();
+    // { PID: { mpu_sequence_number: MPUExtendedTimestamp } }
+    private audio_extended_timestamps_: Map<number, Map<number, MPUExtendedTimestamp>> = new Map();
 
     private video_mfu_queue_: Uint8Array[] = [];
     private video_access_unit_index_ = 0;
@@ -115,8 +118,8 @@ class MMTTLVDemuxer extends BaseDemuxer {
     private audio_mpu_sequence_number_ = 0;
     private audio_track_index_ = 0;
 
-    private find_video_rap = true;
-    private find_audio_rap = true;
+    private find_video_rap_ = true;
+    private find_audio_rap_ = true;
     private eventVersion = -1;
     public constructor(config: any) {
         super();
@@ -190,21 +193,13 @@ class MMTTLVDemuxer extends BaseDemuxer {
     }
 
     private resetVideo() {
-        this.find_video_rap = true;
-        this.video_timestamp_desc_ = undefined;
-        this.video_timestamps_.clear();
-        this.video_extended_timestamp_desc_ = undefined;
-        this.video_extended_timestamps_.clear();
+        this.find_video_rap_ = true;
         this.video_mfu_queue_ = [];
         this.video_units_ = [];
     }
 
     private resetAudio() {
-        this.find_audio_rap = true;
-        this.audio_timestamp_desc_ = undefined;
-        this.audio_timestamps_.clear();
-        this.audio_extended_timestamp_desc_ = undefined;
-        this.audio_extended_timestamps_.clear();
+        this.find_audio_rap_ = true;
         this.audio_mfu_queue_ = [];
     }
 
@@ -242,18 +237,20 @@ class MMTTLVDemuxer extends BaseDemuxer {
             }
             if (asset.assetType === MMT_ASSET_TYPE_MP4A) {
                 audio_track_index += 1;
-            }
-            if (audio_detected && packet_id === this.audio_packet_id_) {
                 for (const desc of asset.assetDescriptors) {
                     if (desc.tag === 'mpuTimestamp') {
-                        this.audio_timestamp_desc_ = desc;
+                        this.audio_timestamp_desc_.set(packet_id, desc);
+                        const map = this.audio_timestamps_.get(packet_id) ?? new Map();
+                        this.audio_timestamps_.set(packet_id, map);
                         for (const ts of desc.timestamps) {
-                            this.audio_timestamps_.set(ts.mpuSequenceNumber, ts);
+                            map.set(ts.mpuSequenceNumber, ts);
                         }
                     } else if (desc.tag === 'mpuExtendedTimestamp') {
-                        this.audio_extended_timestamp_desc_ = desc;
+                        this.audio_extended_timestamp_desc_.set(packet_id, desc);
+                        const map = this.audio_extended_timestamps_.get(packet_id) ?? new Map();
+                        this.audio_extended_timestamps_.set(packet_id, map);
                         for (const ts of desc.timestamps) {
-                            this.audio_extended_timestamps_.set(ts.mpuSequenceNumber, ts);
+                            map.set(ts.mpuSequenceNumber, ts);
                         }
                     }
                 }
@@ -336,14 +333,14 @@ class MMTTLVDemuxer extends BaseDemuxer {
         if (this.audio_mpu_sequence_number_ !== mpu.mpuSequenceNumber) {
             this.audio_mfu_queue_ = [];
         }
-        if (this.find_audio_rap && !mmtHeader.rapFlag) {
+        if (this.find_audio_rap_ && !mmtHeader.rapFlag) {
             return;
         }
         if (mmtHeader.rapFlag || this.audio_mpu_sequence_number_ !== mpu.mpuSequenceNumber) {
             this.audio_mpu_sequence_number_ = mpu.mpuSequenceNumber;
             this.audio_access_unit_index_ = 0;
         }
-        this.find_audio_rap = false;
+        this.find_audio_rap_ = false;
         if (mpu.fragmentationIndicator === MMTP_FRAGMENTATION_INDICATOR_MIDDLE && this.audio_mfu_queue_.length === 0) {
             return;
         }
@@ -361,12 +358,13 @@ class MMTTLVDemuxer extends BaseDemuxer {
         for (const frame of frames) {
             const access_unit = this.audio_access_unit_index_;
             const mpu_sequence_number = mpu.mpuSequenceNumber;
-            const { audio_timestamp_desc_: timestamp, audio_extended_timestamp_desc_: extended_timestamp } = this;
+            const timestamp = this.audio_timestamp_desc_.get(mmtHeader.packetId);
+            const extended_timestamp = this.audio_extended_timestamp_desc_.get(mmtHeader.packetId);
             if (timestamp == null || extended_timestamp == null) {
                 return;
             }
-            const base_timestamp = this.audio_timestamps_.get(mpu_sequence_number);
-            const ext_timestamp = this.audio_extended_timestamps_.get(mpu_sequence_number);
+            const base_timestamp = this.audio_timestamps_.get(mmtHeader.packetId)?.get(mpu_sequence_number);
+            const ext_timestamp = this.audio_extended_timestamps_.get(mmtHeader.packetId)?.get(mpu_sequence_number);
             if (base_timestamp == null || ext_timestamp == null) {
                 return;
             }
@@ -424,17 +422,17 @@ class MMTTLVDemuxer extends BaseDemuxer {
         if (this.video_mpu_sequence_number_ !== mpu.mpuSequenceNumber) {
             this.video_mfu_queue_ = [];
         }
-        if (this.find_video_rap && !mmtHeader.rapFlag) {
+        if (this.find_video_rap_ && !mmtHeader.rapFlag) {
             return;
         }
         if (mmtHeader.rapFlag || this.video_mpu_sequence_number_ !== mpu.mpuSequenceNumber) {
-            if (!this.find_video_rap) {
+            if (!this.find_video_rap_) {
                 this.addVideoSample(this.video_mpu_sequence_number_, this.video_access_unit_index_);
             }
             this.video_access_unit_index_ = 0;
             this.video_mpu_sequence_number_ = mpu.mpuSequenceNumber;
         }
-        this.find_video_rap = false;
+        this.find_video_rap_ = false;
         if (mpu.fragmentationIndicator === MMTP_FRAGMENTATION_INDICATOR_MIDDLE && this.video_mfu_queue_.length === 0) {
             return;
         }
