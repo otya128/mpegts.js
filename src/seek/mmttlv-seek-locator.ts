@@ -363,21 +363,30 @@ class MMTTLVSeekLocator implements SeekLocator {
 
     public async locateSeekPosition(milliseconds: number, abortSignal?: AbortSignal): Promise<number> {
         const ts = milliseconds / 1000;
+        if (ts < this.max_seek_error_seconds) {
+            if (abortSignal.aborted) {
+                throw "aborted";
+            }
+            return 0;
+        }
         const info = await this.seek_info;
         if (info == null) {
             throw "locateSeekPosition failed.";
         }
-        if (ts < this.max_seek_error_seconds) {
-            return 0;
-        }
         const cbr_estimated = await this.estimateCBR(ts, info, abortSignal);
         if (cbr_estimated != null) {
+            if (abortSignal.aborted) {
+                throw "aborted";
+            }
             return cbr_estimated;
         }
         Log.v(this.TAG, "CBR estimation failed, falling back to VBR estimation.");
         const vbr_estimated = await this.estimateVBR(ts, info, abortSignal);
         if (vbr_estimated != null) {
             throw "locateSeekPosition failed.";
+        }
+        if (abortSignal.aborted) {
+            throw "aborted";
         }
         return vbr_estimated;
     }
