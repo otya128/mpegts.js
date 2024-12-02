@@ -196,6 +196,7 @@ class MMTTLVDemuxer extends BaseDemuxer {
         this.video_extended_timestamp_desc_ = undefined;
         this.video_extended_timestamps_.clear();
         this.video_mfu_queue_ = [];
+        this.video_units_ = [];
     }
 
     private resetAudio() {
