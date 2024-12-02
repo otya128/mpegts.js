@@ -37,7 +37,9 @@ import {
     WorkerCommandPacketLoggingConfig,
     WorkerCommandPacketTimeUpdate,
     WorkerCommandPacketReadyStateChange,
-    WorkerCommandPacketUnbufferedSeek
+    WorkerCommandPacketUnbufferedSeek,
+    WorkerCommandPacketSwitchAudioTrack,
+    WorkerCommandPacketResetAudio
 } from './player-engine-worker-cmd-def.js';
 import {
     WorkerMessagePacket,
@@ -490,11 +492,16 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
     }
 
     switchAudioTrack(index: number): void {
-        throw new Error("stub");
-    }
-
-    resetAudio(): void {
-        throw new Error("stub");
+        this._worker.postMessage({
+            cmd: 'switch_audio_track',
+            index,
+        } as WorkerCommandPacketSwitchAudioTrack);
+        if (!this._config.isLive) {
+            this._worker.postMessage({
+                cmd: 'reset_audio',
+                milliseconds: Math.floor(this._media_element.currentTime * 1000),
+            } as WorkerCommandPacketResetAudio);
+        }
     }
 }
 

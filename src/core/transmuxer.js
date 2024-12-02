@@ -317,7 +317,11 @@ class Transmuxer {
     }
 
     switchAudioTrack(index) {
-        this._controller.switchAudioTrack(index);
+        if (this._worker) {
+            this._worker.postMessage({cmd: 'switch_audio_track', param: index});
+        } else {
+            this._controller.switchAudioTrack(index);
+        }
     }
 }
 
