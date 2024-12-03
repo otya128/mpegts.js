@@ -127,6 +127,12 @@ declare namespace Mpegts {
         liveSyncPlaybackRate?: number;
 
         /**
+         * @desc liveBufferLatencyChasing and liveSync work based on system clock latency instead of buffer latency.
+         * @defaultvalue false
+         */
+        systemClockSync?: boolean;
+
+        /**
          * @desc Abort the http connection if there's enough data for playback.
          * @defaultvalue true
          */
@@ -429,6 +435,8 @@ declare namespace Mpegts {
         PES_PRIVATE_DATA_DESCRIPTOR: string;
         PES_PRIVATE_DATA_ARRIVED: string;
         STATISTICS_INFO: string;
+        DESTROYING: string;
+        SYSTEM_CLOCK: string;
     }
 
     interface ErrorTypes {

@@ -50,6 +50,7 @@ import {
     WorkerMessagePacketPlayerEvent,
     WorkerMessagePacketPlayerEventError,
     WorkerMessagePacketPlayerEventExtraData,
+    WorkerMessagePacketSystemClock,
     WorkerMessagePacketTransmuxingEvent,
     WorkerMessagePacketTransmuxingEventInfo,
     WorkerMessagePacketTransmuxingEventRecommendSeekpoint,
@@ -456,6 +457,19 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
             case 'buffered_position_changed': {
                 const packet = message_packet as WorkerMessagePacketBufferedPositionChanged;
                 this._loading_controller.notifyBufferedPositionChanged(packet.buffered_position_milliseconds / 1000);
+                break;
+            }
+            case 'system_clock': {
+                const packet = message_packet as WorkerMessagePacketSystemClock;
+                const now = performance.now() + performance.timeOrigin;
+                const elapsed = (now - packet.received_time) / 1000;
+                if (this._config.isLive && this._config.systemClockSync && this._config.liveBufferLatencyChasing && this._live_latency_chaser) {
+                    this._live_latency_chaser.onSystemClock(packet.system_clock + elapsed);
+                }
+                if (this._config.isLive && this._config.systemClockSync && this._config.liveSync && this._live_latency_synchronizer) {
+                    this._live_latency_synchronizer.onSystemClock(packet.system_clock + elapsed);
+                }
+                this._emitter.emit(PlayerEvents.SYSTEM_CLOCK, { system_clock: packet.system_clock + elapsed });
                 break;
             }
         }

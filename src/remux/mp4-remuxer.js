@@ -78,10 +78,12 @@ class MP4Remuxer {
         this._videoSegmentInfoList = null;
         this._onInitSegment = null;
         this._onMediaSegment = null;
+        this._onSystemClock = null;
     }
 
     bindDataSource(producer) {
         producer.onDataAvailable = this.remux.bind(this);
+        producer.onSystemClock = this._onSystemClock.bind(this);
         producer.onTrackMetadata = this._onTrackMetadataReceived.bind(this);
         return this;
     }
@@ -179,6 +181,23 @@ class MP4Remuxer {
             container: `${type}/${container}`,
             mediaDuration: metadata.duration  // in timescale 1000 (milliseconds)
         });
+    }
+
+    get onSystemClock() {
+        return this._onSystemClock;
+    }
+
+    set onSystemClock(callback) {
+        this._onSystemClock = callback;
+    }
+
+    _onSystemClock(system_clock, received_time) {
+        if (!this._dtsBaseInited) {
+            return;
+        }
+        if (this._onSystemClock != null) {
+            this._onSystemClock(system_clock - this._dtsBase / 1000, received_time);
+        }
     }
 
     _calculateDtsBase(audioTrack, videoTrack) {

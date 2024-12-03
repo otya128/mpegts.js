@@ -252,6 +252,17 @@ class PlayerEngineMainThread implements PlayerEngine {
         this._transmuxer.on(TransmuxingEvents.DURATION_AVAILABLE, (duration: number) => {
             this._mse_controller.onDurationAvailable(duration);
         });
+        this._transmuxer.on(TransmuxingEvents.SYSTEM_CLOCK, (system_clock: number, received_time: number) => {
+            const now = performance.now() + performance.timeOrigin;
+            const elapsed = (now - received_time) / 1000;
+            if (this._config.isLive && this._config.systemClockSync && this._config.liveBufferLatencyChasing && this._live_latency_chaser) {
+                this._live_latency_chaser.onSystemClock(system_clock + elapsed);
+            }
+            if (this._config.isLive && this._config.systemClockSync && this._config.liveSync && this._live_latency_synchronizer) {
+                this._live_latency_synchronizer.onSystemClock(system_clock + elapsed);
+            }
+            this._emitter.emit(PlayerEvents.SYSTEM_CLOCK, { system_clock: system_clock + elapsed });
+        });
 
         this._seeking_handler = new SeekingHandler(
             this._config,

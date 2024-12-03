@@ -27,7 +27,8 @@ export type WorkerMessageType =
     | 'player_event'
     | 'transmuxing_event'
     | 'buffered_position_changed'
-    | 'logcat_callback';
+    | 'logcat_callback'
+    | 'system_clock';
 
 export type WorkerMessagePacket = {
     msg: WorkerMessageType,
@@ -97,4 +98,10 @@ export type WorkerMessagePacketLogcatCallback = WorkerMessagePacket & {
     msg: 'logcat_callback',
     type: string,
     logcat: string,
+};
+
+export type WorkerMessagePacketSystemClock = WorkerMessagePacket & {
+    msg: 'system_clock',
+    system_clock: number,
+    received_time: number,
 };

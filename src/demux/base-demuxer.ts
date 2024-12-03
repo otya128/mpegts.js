@@ -16,6 +16,7 @@ type OnSMPTE2038MetadataCallback = (smpte2038_data: SMPTE2038Data) => void;
 type OnSCTE35MetadataCallback = (scte35_data: SCTE35Data) => void;
 type OnPESPrivateDataCallback = (private_data: PESPrivateData) => void;
 type OnPESPrivateDataDescriptorCallback = (private_data_descriptor: PESPrivateDataDescriptor) => void;
+type OnSystemClockCallback = (system_clock: number, performance_timestamp: number) => void;
 
 export default abstract class BaseDemuxer {
 
@@ -31,6 +32,7 @@ export default abstract class BaseDemuxer {
     public onSCTE35Metadata: OnSCTE35MetadataCallback;
     public onPESPrivateData: OnPESPrivateDataCallback;
     public onPESPrivateDataDescriptor: OnPESPrivateDataDescriptorCallback;
+    public onSystemClock?: OnSystemClockCallback;
 
     public constructor() {}
 
@@ -47,6 +49,7 @@ export default abstract class BaseDemuxer {
         this.onSCTE35Metadata = null;
         this.onPESPrivateData = null;
         this.onPESPrivateDataDescriptor = null;
+        this.onSystemClock = null;
     }
 
     abstract parseChunks(chunk: ArrayBuffer, byteStart: number): number;

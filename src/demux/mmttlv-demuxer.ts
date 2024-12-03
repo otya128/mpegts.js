@@ -28,12 +28,13 @@ import { H265NaluHVC1, H265NaluType, HEVCDecoderConfigurationRecord } from './h2
 import H265Parser from './h265-parser';
 import { MMTTLVReader } from 'arib-mmt-tlv-ts/dist/index.js';
 import { MMTP_FRAGMENTATION_INDICATOR_COMPLETE, MMTP_FRAGMENTATION_INDICATOR_HEAD, MMTP_FRAGMENTATION_INDICATOR_MIDDLE, MMTP_FRAGMENTATION_INDICATOR_TAIL } from 'arib-mmt-tlv-ts/dist/mmtp.js';
-import { MMTSIEvent, MediaProcessingUnitEvent } from 'arib-mmt-tlv-ts/dist/event.js';
+import { MMTSIEvent, MediaProcessingUnitEvent, NTPEvent } from 'arib-mmt-tlv-ts/dist/event.js';
 import { concatBuffers } from 'arib-mmt-tlv-ts/dist/utils.js';
 import { MMTPackageTable, MMT_ASSET_TYPE_HEV1, MMT_ASSET_TYPE_MP4A, PackageListTable } from 'arib-mmt-tlv-ts/dist/mmt-si.js';
 import { MPUExtendedTimestamp, MPUExtendedTimestampDescriptor, MPUTimestamp, MPUTimestampDescriptor } from 'arib-mmt-tlv-ts/dist/mmt-si-descriptor.js';
 import { MMTHeader } from 'arib-mmt-tlv-ts/dist/mmt-header.js';
 import { MediaProcessingUnit } from 'arib-mmt-tlv-ts/dist/mpu.js';
+import { ntp64TimestampToSeconds } from 'arib-mmt-tlv-ts/dist/ntp.js';
 
 type AACAudioMetadata = {
     codec: 'aac',
@@ -118,6 +119,8 @@ class MMTTLVDemuxer extends BaseDemuxer {
     private audio_mpu_sequence_number_ = 0;
     private audio_track_index_ = 0;
 
+    private system_clock_?: number;
+    private system_clock_offset_?: number;
     private find_video_rap_ = true;
     private find_audio_rap_ = true;
     private eventVersion = -1;
@@ -127,6 +130,7 @@ class MMTTLVDemuxer extends BaseDemuxer {
         this.reader_.addEventListener('plt', (e) => this.onPLT(e));
         this.reader_.addEventListener('mpt', (e) => this.onMPT(e));
         this.reader_.addEventListener('mpu', (e) => this.onMPU(e));
+        this.reader_.addEventListener('ntp', (e) => this.onNTP(e));
         // for debug
         this.reader_.addEventListener('eit', (e) => {
             if (e.table.tableId === 'EIT[p/f]') {
@@ -176,10 +180,25 @@ class MMTTLVDemuxer extends BaseDemuxer {
             throw new IllegalStateException('onError & onMediaInfo & onTrackMetadata & onDataAvailable callback must be specified');
         }
 
+        const now = performance.now() + performance.timeOrigin;
+        const prev_stc = this.system_clock_;
+        const prev_stc_offset = this.system_clock_offset_;
         this.reader_.push(new Uint8Array(chunk));
 
         // dispatch parsed frames to the remuxer (consumer)
         this.dispatchAudioVideoMediaSegment();
+        if (this.onSystemClock != null && this.system_clock_ != null && prev_stc !== this.system_clock_) {
+            let stc_offset = 0;
+            if (prev_stc != null && prev_stc_offset != null && this.system_clock_offset_ != null) {
+                const stc_delta = this.system_clock_ - prev_stc;
+                const offset_delta = this.system_clock_offset_ - prev_stc_offset;
+                if (stc_delta > 0 && offset_delta > 0) {
+                    const rate = offset_delta / stc_delta;
+                    stc_offset = (this.reader_.bytes - this.system_clock_offset_) / rate;
+                }
+            }
+            this.onSystemClock(this.system_clock_ + stc_offset, now);
+        }
 
         return chunk.byteLength;  // consumed bytes
     }
@@ -281,6 +300,8 @@ class MMTTLVDemuxer extends BaseDemuxer {
         this.video_init_segment_dispatched_ = false;
         this.audio_init_segment_dispatched_ = false;
         this.reader_.reset();
+        this.system_clock_ = undefined;
+        this.system_clock_offset_ = null;
     }
 
     private addVideoSample(mpu_sequence_number: number, access_unit_index: number) {
@@ -322,6 +343,11 @@ class MMTTLVDemuxer extends BaseDemuxer {
         if (mmtHeader.packetId === this.video_packet_id_) {
             this.processVideoMPU(mmtHeader, mpu);
         }
+    }
+
+    private onNTP({ ntp, offset }: NTPEvent) {
+        this.system_clock_ = ntp64TimestampToSeconds(ntp.transmitTimestamp);
+        this.system_clock_offset_ = offset;
     }
 
     audio_metadata_changed?: number;

@@ -66,6 +66,7 @@ let TransmuxingWorker = function (self) {
                 controller.on(TransmuxingEvents.STATISTICS_INFO, onStatisticsInfo.bind(this));
                 controller.on(TransmuxingEvents.RECOMMEND_SEEKPOINT, onRecommendSeekpoint.bind(this));
                 controller.on(TransmuxingEvents.DURATION_AVAILABLE, onDurationAvailable.bind(this));
+                controller.on(TransmuxingEvents.SYSTEM_CLOCK, onSystemClock.bind(this));
                 break;
             case 'destroy':
                 if (controller) {
@@ -261,6 +262,16 @@ let TransmuxingWorker = function (self) {
         self.postMessage({
             msg: TransmuxingEvents.DURATION_AVAILABLE,
             data: duration
+        });
+    }
+
+    function onSystemClock(system_clock, received_time) {
+        self.postMessage({
+            msg: TransmuxingEvents.SYSTEM_CLOCK,
+            data: {
+                system_clock,
+                received_time
+            }
         });
     }
 

@@ -36,23 +36,33 @@ class LiveLatencyChaser {
     }
 
     public notifyBufferedRangeUpdate(): void {
-        this._chaseLiveLatency();
+        if (this._config.systemClockSync) {
+            return;
+        }
+        const buffered: TimeRanges = this._media_element.buffered;
+        if (buffered.length === 0) {
+            return;
+        }
+        const buffered_end = buffered.end(buffered.length - 1);
+
+        this._chaseLiveLatency(buffered_end);
     }
 
-    private _chaseLiveLatency(): void {
-        const buffered: TimeRanges = this._media_element.buffered;
+    public onSystemClock(system_clock: number): void {
+        this._chaseLiveLatency(system_clock);
+    }
+
+    private _chaseLiveLatency(buffered_end: number): void {
         const current_time: number = this._media_element.currentTime;
 
         const paused = this._media_element.paused;
 
         if (!this._config.isLive ||
             !this._config.liveBufferLatencyChasing ||
-            buffered.length == 0 ||
             (!this._config.liveBufferLatencyChasingOnPaused && paused)) {
             return;
         }
 
-        const buffered_end = buffered.end(buffered.length - 1);
         if (buffered_end > this._config.liveBufferLatencyMaxLatency) {
             if (buffered_end - current_time > this._config.liveBufferLatencyMaxLatency) {
                 let target_time = buffered_end - this._config.liveBufferLatencyMinRemain;

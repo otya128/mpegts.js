@@ -376,6 +376,7 @@ class TransmuxingController {
 
         this._remuxer.onInitSegment = this._onRemuxerInitSegmentArrival.bind(this);
         this._remuxer.onMediaSegment = this._onRemuxerMediaSegmentArrival.bind(this);
+        this._remuxer.onSystemClock = this._onSystemClock.bind(this);
         if (!this._config.isLive && this._mediaDataSource.segments.length === 1) {
             this._seekLocator = new MMTTLVSeekLocator(this._mediaDataSource, this._config, (d) => this._emitter.emit(TransmuxingEvents.DURATION_AVAILABLE, d));
         }
@@ -574,6 +575,10 @@ class TransmuxingController {
 
             this._emitter.emit(TransmuxingEvents.RECOMMEND_SEEKPOINT, seekpoint);
         }
+    }
+
+    _onSystemClock(system_clock, received_time) {
+        this._emitter.emit(TransmuxingEvents.SYSTEM_CLOCK, system_clock, received_time);
     }
 
     _enableStatisticsReporter() {

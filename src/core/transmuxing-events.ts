@@ -35,7 +35,8 @@ enum TransmuxingEvents {
     PES_PRIVATE_DATA_ARRIVED = 'pes_private_data_arrived',
     STATISTICS_INFO = 'statistics_info',
     RECOMMEND_SEEKPOINT = 'recommend_seekpoint',
-    DURATION_AVAILABLE = 'duration_available'
+    DURATION_AVAILABLE = 'duration_available',
+    SYSTEM_CLOCK = 'system_clock'
 };
 
 export default TransmuxingEvents;

@@ -72,6 +72,7 @@ class Transmuxer {
             ctl.on(TransmuxingEvents.STATISTICS_INFO, this._onStatisticsInfo.bind(this));
             ctl.on(TransmuxingEvents.RECOMMEND_SEEKPOINT, this._onRecommendSeekpoint.bind(this));
             ctl.on(TransmuxingEvents.DURATION_AVAILABLE, this._onDurationAvailable.bind(this));
+            ctl.on(TransmuxingEvents.SYSTEM_CLOCK, this._onSystemClock.bind(this));
         }
     }
 
@@ -258,6 +259,10 @@ class Transmuxer {
         });
     }
 
+    _onSystemClock(system_clock, received_time) {
+        this._emitter.emit(TransmuxingEvents.SYSTEM_CLOCK, system_clock, received_time);
+    }
+
     _onLoggingConfigChanged(config) {
         if (this._worker) {
             this._worker.postMessage({cmd: 'logging_config', param: config});
@@ -311,6 +316,8 @@ class Transmuxer {
             case 'logcat_callback':
                 Log.emitter.emit('log', data.type, data.logcat);
                 break;
+            case TransmuxingEvents.SYSTEM_CLOCK:
+                this._emitter.emit(message.msg, data.system_clock, data.received_time);
             default:
                 break;
         }

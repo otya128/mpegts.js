@@ -47,6 +47,7 @@ import {
     WorkerMessagePacketTransmuxingEventRecommendSeekpoint,
     WorkerMessagePacketBufferedPositionChanged,
     WorkerMessagePacketLogcatCallback,
+    WorkerMessagePacketSystemClock,
 } from './player-engine-worker-msg-def.js';
 
 const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
@@ -285,6 +286,13 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
         });
         transmuxer.on(TransmuxingEvents.DURATION_AVAILABLE, (duration: number) => {
             mse_controller.onDurationAvailable(duration);
+        });
+        transmuxer.on(TransmuxingEvents.SYSTEM_CLOCK, (system_clock: number, received_time: number) => {
+            self.postMessage({
+                msg: 'system_clock',
+                system_clock,
+                received_time,
+            } as WorkerMessagePacketSystemClock);
         });
 
         transmuxer.open();

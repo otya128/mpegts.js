@@ -41,13 +41,22 @@ class LiveLatencySynchronizer {
         this._config = null;
     }
 
+    public onSystemClock(system_clock: number): void {
+        const current_time = this._media_element.currentTime;
+        const latency = system_clock - current_time;
+
+        this._sync(latency);
+    }
+
     private _onMediaTimeUpdate(e: Event): void {
-        if (!this._config.isLive || !this._config.liveSync) {
+        if (!this._config.isLive || !this._config.liveSync || this._config.systemClockSync) {
             return;
         }
 
-        const latency = this._getCurrentLatency();
+        this._sync(this._getCurrentLatency());
+    }
 
+    private _sync(latency: number) {
         if (latency > this._config.liveSyncMaxLatency) {
             const playback_rate = Math.min(2, Math.max(1, this._config.liveSyncPlaybackRate));
             this._media_element.playbackRate = playback_rate;
