@@ -80,6 +80,9 @@ In multipart mode, `duration` `filesize` `url` field in `MediaDataSource` struct
 | `liveSyncMaxLatency?`            | `number`  | `1.2`                        | Maximum acceptable buffer latency in HTMLMediaElement, in seconds. Effective only if `isLive: true` and `liveSync: true` |
 | `liveSyncTargetLatency?`         | `number`  | `0.8`                        | Target latency in HTMLMediaElement to be chased to when latency exceeds `liveSyncMaxLatency`, in seconds. Effective only if `isLive: true` and `liveSync: true` |
 | `liveSyncPlaybackRate?`          | `number`  | `1.2`                        | PlaybackRate limited between [1, 2] will be used for latency chasing. Effective only if `isLive: true` and `liveSync: true` |
+| `liveSyncMinLatency?`            | `number`  | `undefined`                  | Minimum acceptable buffer latency in HTMLMediaElement, in seconds. Effective only if `isLive: true` and `liveSync: true` |
+| `liveSyncMinPlaybackRate?`       | `number`  | `0.95`                       | PlaybackRate limited between [0.5, 1] will be used for latency chasing. Effective only if `isLive: true` and `liveSync: true` |
+| `systemClockSync?`               | `boolean` | `false`                      | `liveBufferLatencyChasing` and `liveSync` work based on system clock latency instead of buffer latency. |
 | `lazyLoad?`                      | `boolean` | `true`                       | Abort the http connection if there's enough data for playback. |
 | `lazyLoadMaxDuration?`           | `number`  | `3 * 60`                     | Indicates how many seconds of data to be kept for `lazyLoad`. |
 | `lazyLoadRecoverDuration?`       | `number`  | `30`                         | Indicates the `lazyLoad` recover time boundary in seconds. |

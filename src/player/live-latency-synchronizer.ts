@@ -16,8 +16,11 @@
  * limitations under the License.
  */
 
+import Log from "../utils/logger";
+
 // Live buffer latency synchronizer by increasing HTMLMediaElement.playbackRate
 class LiveLatencySynchronizer {
+    TAG = 'LiveLatencySynchronizer';
 
     private _config: any = null;
     private _media_element: HTMLMediaElement = null;
@@ -44,7 +47,7 @@ class LiveLatencySynchronizer {
     public onSystemClock(system_clock: number): void {
         const current_time = this._media_element.currentTime;
         const latency = system_clock - current_time;
-
+    
         this._sync(latency);
     }
 
@@ -59,10 +62,20 @@ class LiveLatencySynchronizer {
     private _sync(latency: number) {
         if (latency > this._config.liveSyncMaxLatency) {
             const playback_rate = Math.min(2, Math.max(1, this._config.liveSyncPlaybackRate));
-            this._media_element.playbackRate = playback_rate;
+            if (this._media_element.playbackRate !== playback_rate) {
+                Log.v(this.TAG, `playbackRate ${this._media_element.playbackRate} => ${playback_rate}`);
+                this._media_element.playbackRate = playback_rate;
+            }
         } else if (latency > this._config.liveSyncTargetLatency) {
             // do nothing, keep playbackRate
+        } else if (this._config.liveSyncMinLatency != null && latency < this._config.liveSyncMinLatency) {
+            const playback_rate = Math.min(1, Math.max(0.5, this._config.liveSyncMinPlaybackRate));
+            if (this._media_element.playbackRate !== playback_rate) {
+                Log.v(this.TAG, `playbackRate ${this._media_element.playbackRate} => ${playback_rate}`);
+                this._media_element.playbackRate = playback_rate;
+            }
         } else if (this._media_element.playbackRate !== 1 && this._media_element.playbackRate !== 0) {
+            Log.v(this.TAG, `playbackRate ${this._media_element.playbackRate} => 1`);
             this._media_element.playbackRate = 1;
         }
     }

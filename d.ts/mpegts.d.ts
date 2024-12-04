@@ -127,6 +127,20 @@ declare namespace Mpegts {
         liveSyncPlaybackRate?: number;
 
         /**
+         * @desc Minimum acceptable buffer latency in HTMLMediaElement, in seconds.
+         *       Effective only if `isLive: true` and `liveSync: true`
+         * @defaultvalue undefined
+         */
+        liveSyncMinLatency?: number;
+
+        /**
+         * @desc PlaybackRate limited between [0.5, 1] will be used for latency chasing.
+         *       Effective only if `isLive: true` and `liveSync: true`
+         * @defaultvalue 0.95
+         */
+        liveSyncMinPlaybackRate?: number;
+
+        /**
          * @desc liveBufferLatencyChasing and liveSync work based on system clock latency instead of buffer latency.
          * @defaultvalue false
          */
