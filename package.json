@@ -23,7 +23,7 @@
     "serve": "webpack serve --mode=development --progress"
   },
   "dependencies": {
-    "arib-mmt-tlv-ts": "^1.0.2",
+    "arib-mmt-tlv-ts": "^1.0.3",
     "es6-promise": "^4.2.5",
     "webworkify-webpack": "xqq/webworkify-webpack"
   },

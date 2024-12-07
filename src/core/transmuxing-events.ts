@@ -36,7 +36,8 @@ enum TransmuxingEvents {
     STATISTICS_INFO = 'statistics_info',
     RECOMMEND_SEEKPOINT = 'recommend_seekpoint',
     DURATION_AVAILABLE = 'duration_available',
-    SYSTEM_CLOCK = 'system_clock'
+    SYSTEM_CLOCK = 'system_clock',
+    AUDIO_TRACKS_METADATA = 'audio_tracks_metadata'
 };
 
 export default TransmuxingEvents;

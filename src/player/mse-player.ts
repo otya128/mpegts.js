@@ -142,8 +142,8 @@ class MSEPlayer {
         return this._player_engine.statisticsInfo;
     }
 
-    public switchAudioTrack(index: number): void {
-        this._player_engine.switchAudioTrack(index);
+    public switchAudioTrack(id: string): void {
+        this._player_engine.switchAudioTrack(id);
     }
 
 }

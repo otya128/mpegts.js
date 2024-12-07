@@ -49,6 +49,7 @@ import {
     WorkerMessagePacketLogcatCallback,
     WorkerMessagePacketSystemClock,
 } from './player-engine-worker-msg-def.js';
+import { AudioTrack } from '../demux/base-demuxer';
 
 const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
     const TAG: string = 'PlayerEngineWorker';
@@ -134,7 +135,7 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
                 break;
             case 'switch_audio_track': {
                 const packet = command_packet as WorkerCommandPacketSwitchAudioTrack;
-                transmuxer.switchAudioTrack(packet.index);
+                transmuxer.switchAudioTrack(packet.id);
                 break;
             }
             case 'reset_audio': {
@@ -293,6 +294,9 @@ const PlayerEngineWorker = (self: DedicatedWorkerGlobalScope) => {
                 system_clock,
                 received_time,
             } as WorkerMessagePacketSystemClock);
+        });
+        transmuxer.on(TransmuxingEvents.AUDIO_TRACKS_METADATA, (tracks: AudioTrack[]) => {
+            emitPlayerEventsExtraData(PlayerEvents.AUDIO_TRACKS_METADATA, tracks);
         });
 
         transmuxer.open();

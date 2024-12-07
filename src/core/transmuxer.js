@@ -73,6 +73,7 @@ class Transmuxer {
             ctl.on(TransmuxingEvents.RECOMMEND_SEEKPOINT, this._onRecommendSeekpoint.bind(this));
             ctl.on(TransmuxingEvents.DURATION_AVAILABLE, this._onDurationAvailable.bind(this));
             ctl.on(TransmuxingEvents.SYSTEM_CLOCK, this._onSystemClock.bind(this));
+            ctl.on(TransmuxingEvents.AUDIO_TRACKS_METADATA, this._onAudioTracksMetadata.bind(this));
         }
     }
 
@@ -263,6 +264,12 @@ class Transmuxer {
         this._emitter.emit(TransmuxingEvents.SYSTEM_CLOCK, system_clock, received_time);
     }
 
+    _onAudioTracksMetadata(tracks) {
+        Promise.resolve().then(() => {
+            this._emitter.emit(TransmuxingEvents.AUDIO_TRACKS_METADATA, tracks);
+        });
+    }
+
     _onLoggingConfigChanged(config) {
         if (this._worker) {
             this._worker.postMessage({cmd: 'logging_config', param: config});
@@ -304,6 +311,7 @@ class Transmuxer {
             case TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED:
             case TransmuxingEvents.STATISTICS_INFO:
             case TransmuxingEvents.DURATION_AVAILABLE:
+            case TransmuxingEvents.AUDIO_TRACKS_METADATA:
                 this._emitter.emit(message.msg, data);
                 break;
             case TransmuxingEvents.IO_ERROR:
@@ -323,11 +331,11 @@ class Transmuxer {
         }
     }
 
-    switchAudioTrack(index) {
+    switchAudioTrack(id) {
         if (this._worker) {
-            this._worker.postMessage({cmd: 'switch_audio_track', param: index});
+            this._worker.postMessage({cmd: 'switch_audio_track', param: id});
         } else {
-            this._controller.switchAudioTrack(index);
+            this._controller.switchAudioTrack(id);
         }
     }
 }

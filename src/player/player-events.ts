@@ -32,7 +32,8 @@ enum PlayerEvents {
     PES_PRIVATE_DATA_ARRIVED = 'pes_private_data_arrived',
     STATISTICS_INFO = 'statistics_info',
     DESTROYING = 'destroying',
-    SYSTEM_CLOCK = 'system_clock'
+    SYSTEM_CLOCK = 'system_clock',
+    AUDIO_TRACKS_METADATA = 'audio_tracks_metadata'
 };
 
 export default PlayerEvents;

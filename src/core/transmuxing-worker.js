@@ -67,6 +67,7 @@ let TransmuxingWorker = function (self) {
                 controller.on(TransmuxingEvents.RECOMMEND_SEEKPOINT, onRecommendSeekpoint.bind(this));
                 controller.on(TransmuxingEvents.DURATION_AVAILABLE, onDurationAvailable.bind(this));
                 controller.on(TransmuxingEvents.SYSTEM_CLOCK, onSystemClock.bind(this));
+                controller.on(TransmuxingEvents.AUDIO_TRACKS_METADATA, onAudioTracksMetadata.bind(this));
                 break;
             case 'destroy':
                 if (controller) {
@@ -273,6 +274,14 @@ let TransmuxingWorker = function (self) {
                 received_time
             }
         });
+    }
+
+    function onAudioTracksMetadata(tracks) {
+        let obj = {
+            msg: TransmuxingEvents.AUDIO_TRACKS_METADATA,
+            data: data
+        };
+        self.postMessage(obj);
     }
 
     function onLogcatCallback(type, str) {

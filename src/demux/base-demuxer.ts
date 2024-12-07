@@ -17,6 +17,19 @@ type OnSCTE35MetadataCallback = (scte35_data: SCTE35Data) => void;
 type OnPESPrivateDataCallback = (private_data: PESPrivateData) => void;
 type OnPESPrivateDataDescriptorCallback = (private_data_descriptor: PESPrivateDataDescriptor) => void;
 type OnSystemClockCallback = (system_clock: number, performance_timestamp: number) => void;
+export type ChannelLayoutName = 'mono' | 'dualmono' | 'stereo' | '4' | '5' | '5.1' | '7.1' | '22.2';
+export type AudioTrack = {
+    id: string;
+    main?: boolean;
+    channelLayoutName?: ChannelLayoutName;
+    groupId?: string;
+    samplingRate?: number;
+    label?: string;
+    language?: string;
+    secondLanguage?: string;
+    audioDescription?: 'visually' | 'hearing';
+};
+type OnAudioTracksMetadataCallback = (tracks: AudioTrack[]) => void;
 
 export default abstract class BaseDemuxer {
 
@@ -33,6 +46,7 @@ export default abstract class BaseDemuxer {
     public onPESPrivateData: OnPESPrivateDataCallback;
     public onPESPrivateDataDescriptor: OnPESPrivateDataDescriptorCallback;
     public onSystemClock?: OnSystemClockCallback;
+    public onAudioTracksMetadata?: OnAudioTracksMetadataCallback;
 
     public constructor() {}
 
@@ -50,10 +64,11 @@ export default abstract class BaseDemuxer {
         this.onPESPrivateData = null;
         this.onPESPrivateDataDescriptor = null;
         this.onSystemClock = null;
+        this.onAudioTracksMetadata = null;
     }
 
     abstract parseChunks(chunk: ArrayBuffer, byteStart: number): number;
 
     public insertDiscontinuity(): void {}
-    public switchAudioTrack(index: number): void {}
+    public switchAudioTrack(id: string): void {}
 }

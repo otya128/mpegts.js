@@ -361,7 +361,7 @@ declare namespace Mpegts {
          * @since 1.4
          */
         statisticsInfo: NativePlayerStatisticsInfo | MSEPlayerStatisticsInfo;
-        switchAudioTrack(index: number): void;
+        switchAudioTrack(id: string): void;
     }
 
     interface NativePlayerStatisticsInfo {
@@ -451,7 +451,21 @@ declare namespace Mpegts {
         STATISTICS_INFO: string;
         DESTROYING: string;
         SYSTEM_CLOCK: string;
+        AUDIO_TRACKS_METADATA: string;
     }
+    
+    type ChannelLayoutName = 'mono' | 'dualmono' | 'stereo' | '4' | '5' | '5.1' | '7.1' | '22.2';
+    type AudioTrack = {
+        id: string;
+        main?: boolean;
+        channelLayoutName?: ChannelLayoutName;
+        groupId?: string;
+        samplingRate?: number;
+        label?: string;
+        language?: string;
+        secondLanguage?: string;
+        audioDescription?: 'visually' | 'hearing';
+    };
 
     interface ErrorTypes {
         NETWORK_ERROR: string;

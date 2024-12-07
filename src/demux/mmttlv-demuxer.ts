@@ -21,7 +21,7 @@
 import Log from '../utils/logger';
 import MediaInfo from '../core/media-info';
 import {IllegalStateException} from '../utils/exception';
-import BaseDemuxer from './base-demuxer';
+import BaseDemuxer, { AudioTrack } from './base-demuxer';
 import { AACFrame, AudioSpecificConfig, LOASAACFrame, readAudioMuxElement } from './aac';
 import { MPEG4AudioObjectTypes, MPEG4SamplingFrequencyIndex } from './mpeg4-audio';
 import { H265NaluHVC1, H265NaluType, HEVCDecoderConfigurationRecord } from './h265';
@@ -31,7 +31,7 @@ import { MMTP_FRAGMENTATION_INDICATOR_COMPLETE, MMTP_FRAGMENTATION_INDICATOR_HEA
 import { MMTSIEvent, MediaProcessingUnitEvent, NTPEvent } from 'arib-mmt-tlv-ts/dist/event.js';
 import { concatBuffers } from 'arib-mmt-tlv-ts/dist/utils.js';
 import { MMTPackageTable, MMT_ASSET_TYPE_HEV1, MMT_ASSET_TYPE_MP4A, PackageListTable } from 'arib-mmt-tlv-ts/dist/mmt-si.js';
-import { MPUExtendedTimestamp, MPUExtendedTimestampDescriptor, MPUTimestamp, MPUTimestampDescriptor } from 'arib-mmt-tlv-ts/dist/mmt-si-descriptor.js';
+import { MH_AUDIO_COMPONENT_STREAM_CONTENT_MPEG4_AAC, MH_AUDIO_COMPONENT_TYPE_22POINT2, MH_AUDIO_COMPONENT_TYPE_5POINT1, MH_AUDIO_COMPONENT_TYPE_7POINT1, MH_AUDIO_COMPONENT_TYPE_COMMENTARY_FOR_VISUALLY_IMPAIRED, MH_AUDIO_COMPONENT_TYPE_FOR_HEARING_IMPAIRED, MH_AUDIO_COMPONENT_TYPE_MASK_HANDICAPPED, MH_AUDIO_COMPONENT_TYPE_MASK_SOUND_MODE, MH_AUDIO_COMPONENT_TYPE_STEREO, MPUExtendedTimestamp, MPUExtendedTimestampDescriptor, MPUTimestamp, MPUTimestampDescriptor, SAMPLING_RATE_48000, STREAM_TYPE_LATM_LOAS } from 'arib-mmt-tlv-ts/dist/mmt-si-descriptor.js';
 import { MMTHeader } from 'arib-mmt-tlv-ts/dist/mmt-header.js';
 import { MediaProcessingUnit } from 'arib-mmt-tlv-ts/dist/mpu.js';
 import { ntp64TimestampToSeconds } from 'arib-mmt-tlv-ts/dist/ntp.js';
@@ -117,13 +117,14 @@ class MMTTLVDemuxer extends BaseDemuxer {
     private audio_mfu_queue_: Uint8Array[] = [];
     private audio_access_unit_index_ = 0;
     private audio_mpu_sequence_number_ = 0;
-    private audio_track_index_ = 0;
+    private selected_audio_component_tag_ = 0;
 
     private system_clock_?: number;
     private system_clock_offset_?: number;
     private find_video_rap_ = true;
     private find_audio_rap_ = true;
     private eventVersion = -1;
+    private mpt_version_ = -1;
     public constructor(config: any) {
         super();
 
@@ -222,17 +223,90 @@ class MMTTLVDemuxer extends BaseDemuxer {
         this.audio_mfu_queue_ = [];
     }
 
-    private onMPT({ packetId, table }: MMTSIEvent<MMTPackageTable>) {
-        if (this.mpt_packet_id_ !== packetId) {
+    private onMPT({ packetId: mpt_packet_id, table }: MMTSIEvent<MMTPackageTable>) {
+        if (this.mpt_packet_id_ !== mpt_packet_id) {
             return;
         }
+        const mpt_changed = this.mpt_version_ !== table.version;
+        this.mpt_version_ = table.version;
         let audio_detected = false, video_detected = false;
         let audio_track_index = 0;
-        let audio_tracks = 0;
+        let main_audio_packet_id = -1;
+        let selected_audio_packet_id = -1;
+        const selectable_audios = new Set<number>();
         for (const asset of table.assets) {
+            const packet_id = asset.locations[0]?.packetId;
             if (asset.assetType === MMT_ASSET_TYPE_MP4A) {
-                audio_tracks += 1;
+                let selectable = true;
+                for (const desc of asset.assetDescriptors) {
+                    if (desc.tag === 'mhAudioComponent') {
+                        if (desc.streamContent !== MH_AUDIO_COMPONENT_STREAM_CONTENT_MPEG4_AAC) {
+                            selectable = false;
+                        } else if (desc.streamType !== STREAM_TYPE_LATM_LOAS) {
+                            selectable = false;
+                        }
+                        if (desc.mainComponentFlag) {
+                            main_audio_packet_id = packet_id;
+                        }
+                        if (this.selected_audio_component_tag_ === desc.componentTag) {
+                            selected_audio_packet_id = packet_id;
+                        }
+                    }
+                }
+                if (selectable) {
+                    selectable_audios.add(packet_id);
+                }
             }
+        }
+        if (selected_audio_packet_id === -1) {
+            selected_audio_packet_id = main_audio_packet_id;
+        }
+        if (mpt_changed) {
+            const audio_track_list: AudioTrack[] = [];
+            for (const asset of table.assets) {
+                const packet_id = asset.locations[0]?.packetId;
+                if (selectable_audios.has(packet_id)) {
+                    const audio_track: AudioTrack = {
+                        id: String(audio_track_list.length),
+                    };
+                    for (const desc of asset.assetDescriptors) {
+                        if (desc.tag === 'mhAudioComponent') {
+                            audio_track.label = new TextDecoder().decode(desc.text);
+                            if (desc.samplingRate === SAMPLING_RATE_48000) {
+                                audio_track.samplingRate = 48000;
+                            }
+                            audio_track.main = desc.mainComponentFlag;
+                            switch (desc.componentType & MH_AUDIO_COMPONENT_TYPE_MASK_SOUND_MODE) {
+                                case MH_AUDIO_COMPONENT_TYPE_STEREO:
+                                    audio_track.channelLayoutName = 'stereo';
+                                    break;
+                                case MH_AUDIO_COMPONENT_TYPE_5POINT1:
+                                    audio_track.channelLayoutName = '5.1';
+                                    break;
+                                case MH_AUDIO_COMPONENT_TYPE_7POINT1:
+                                    audio_track.channelLayoutName = '7.1';
+                                    break;
+                                case MH_AUDIO_COMPONENT_TYPE_22POINT2:
+                                    audio_track.channelLayoutName = '22.2';
+                                    break;
+                            }
+                            switch (desc.componentType & MH_AUDIO_COMPONENT_TYPE_MASK_HANDICAPPED) {
+                                case MH_AUDIO_COMPONENT_TYPE_COMMENTARY_FOR_VISUALLY_IMPAIRED:
+                                    audio_track.audioDescription = 'visually';
+                                    break;
+                                case MH_AUDIO_COMPONENT_TYPE_FOR_HEARING_IMPAIRED:
+                                    audio_track.audioDescription = 'hearing';
+                                break;
+                            }
+                            audio_track.language = String.fromCharCode((desc.iso639LanguageCode >> 16) & 0xff, (desc.iso639LanguageCode >> 8) & 0xff, desc.iso639LanguageCode & 0xff);
+                            audio_track.groupId = desc.simulcastGroupTag.toString(16);
+                            audio_track.id = desc.componentTag.toString(16);
+                        }
+                    }
+                    audio_track_list.push(audio_track);
+                }
+            }
+            this.onAudioTracksMetadata?.(audio_track_list);
         }
         for (const asset of table.assets) {
             const packet_id = asset.locations[0]?.packetId;
@@ -245,7 +319,7 @@ class MMTTLVDemuxer extends BaseDemuxer {
                 this.has_video_ = true;
                 video_detected = true;
             }
-            if (!audio_detected && asset.assetType === MMT_ASSET_TYPE_MP4A && audio_track_index === Math.min(audio_tracks - 1, this.audio_track_index_)) {
+            if (!audio_detected && selectable_audios.has(packet_id) && packet_id === selected_audio_packet_id) {
                 if (this.audio_packet_id_ != null && this.audio_packet_id_ !== packet_id) {
                     Log.v(this.TAG, `audio packet id changed 0x${this.audio_packet_id_.toString(16)} => 0x${packet_id.toString(16)}`);
                     this.resetAudio();
@@ -254,7 +328,7 @@ class MMTTLVDemuxer extends BaseDemuxer {
                 this.has_audio_ = true;
                 audio_detected = true;
             }
-            if (asset.assetType === MMT_ASSET_TYPE_MP4A) {
+            if (selectable_audios.has(packet_id)) {
                 audio_track_index += 1;
                 for (const desc of asset.assetDescriptors) {
                     if (desc.tag === 'mpuTimestamp') {
@@ -302,6 +376,7 @@ class MMTTLVDemuxer extends BaseDemuxer {
         this.reader_.reset();
         this.system_clock_ = undefined;
         this.system_clock_offset_ = null;
+        this.mpt_version_ = -1;
     }
 
     private addVideoSample(mpu_sequence_number: number, access_unit_index: number) {
@@ -763,8 +838,8 @@ class MMTTLVDemuxer extends BaseDemuxer {
         }
     }
 
-    switchAudioTrack(index: number): void {
-        this.audio_track_index_ = index;
+    switchAudioTrack(id: string): void {
+        this.selected_audio_component_tag_ = parseInt(id, 16);
     }
 }
 

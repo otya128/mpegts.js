@@ -64,7 +64,7 @@ export type WorkerCommandPacketReadyStateChange = WorkerCommandPacket & {
 
 export type WorkerCommandPacketSwitchAudioTrack = WorkerCommandPacket & {
     cmd: 'switch_audio_track',
-    index: number,
+    id: string,
 };
 
 export type WorkerCommandPacketResetAudio = WorkerCommandPacket & {

@@ -370,6 +370,7 @@ class TransmuxingController {
 
         demuxer.onError = this._onDemuxException.bind(this);
         demuxer.onMediaInfo = this._onMediaInfo.bind(this);
+        demuxer.onAudioTracksMetadata = this._onAudioTracksMetadata.bind(this);
 
         this._remuxer.bindDataSource(this._demuxer);
         this._demuxer.bindDataSource(this._ioctl);
@@ -507,6 +508,10 @@ class TransmuxingController {
         this._emitter.emit(TransmuxingEvents.PES_PRIVATE_DATA_ARRIVED, private_data);
     }
 
+    _onAudioTracksMetadata(tracks) {
+        this._emitter.emit(TransmuxingEvents.AUDIO_TRACKS_METADATA, tracks);
+    }
+
     _onIOSeeked() {
         this._remuxer.insertDiscontinuity();
     }
@@ -625,8 +630,8 @@ class TransmuxingController {
         this._emitter.emit(TransmuxingEvents.STATISTICS_INFO, info);
     }
 
-    switchAudioTrack(index) {
-        this._demuxer.switchAudioTrack(index);
+    switchAudioTrack(id) {
+        this._demuxer.switchAudioTrack(id);
     }
 
 }

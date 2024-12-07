@@ -33,6 +33,7 @@ import LoadingController from './loading-controller';
 import StartupStallJumper from './startup-stall-jumper';
 import LiveLatencyChaser from './live-latency-chaser';
 import LiveLatencySynchronizer from './live-latency-synchronizer';
+import { AudioTrack } from '../demux/base-demuxer';
 
 class PlayerEngineMainThread implements PlayerEngine {
 
@@ -263,6 +264,9 @@ class PlayerEngineMainThread implements PlayerEngine {
             }
             this._emitter.emit(PlayerEvents.SYSTEM_CLOCK, { system_clock: system_clock + elapsed });
         });
+        this._transmuxer.on(TransmuxingEvents.AUDIO_TRACKS_METADATA, (tracks: AudioTrack[]) => {
+            this._emitter.emit(PlayerEvents.AUDIO_TRACKS_METADATA, tracks);
+        });
 
         this._seeking_handler = new SeekingHandler(
             this._config,
@@ -457,8 +461,8 @@ class PlayerEngineMainThread implements PlayerEngine {
         return stat_info;
     }
 
-    switchAudioTrack(index: number): void {
-        this._transmuxer.switchAudioTrack(index);
+    switchAudioTrack(id: string): void {
+        this._transmuxer.switchAudioTrack(id);
         if (!this._config.isLive) {
             this._mse_controller.flush("audio");
             this._transmuxer.seek(Math.floor(this._media_element.currentTime * 1000));

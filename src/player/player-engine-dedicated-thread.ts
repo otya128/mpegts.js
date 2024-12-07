@@ -505,10 +505,10 @@ class PlayerEngineDedicatedThread implements PlayerEngine {
         return stat_info;
     }
 
-    switchAudioTrack(index: number): void {
+    switchAudioTrack(id: string): void {
         this._worker.postMessage({
             cmd: 'switch_audio_track',
-            index,
+            id,
         } as WorkerCommandPacketSwitchAudioTrack);
         if (!this._config.isLive) {
             this._worker.postMessage({

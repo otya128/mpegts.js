@@ -257,13 +257,13 @@ class NativePlayer {
         this._emitter.emit(PlayerEvents.STATISTICS_INFO, this.statisticsInfo);
     }
 
-    switchAudioTrack(index) {
+    switchAudioTrack(id) {
         if (!("audioTracks" in this._mediaElement)) {
             throw new InvalidArgumentException(`NativePlayer doesn't support switchAudioTrack`);
         }
         const audioTracks = this._mediaElement.audioTracks;
         for (let i = 0; i < audioTracks.length; i++) {    
-            audioTracks[i].enabled = index === i;
+            audioTracks[i].enabled = id === String(i);
         }
     }
 
