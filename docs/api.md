@@ -130,7 +130,13 @@ Return a `FeatureList` object which has following details:
 | `nativeWebmVP8Playback` | `boolean` | Indicates whether your browser support WebM VP8 video file natively. |
 | `nativeWebmVP9Playback` | `boolean` | Indicates whether your browser support WebM VP9 video file natively. |
 
+### mpegts.supportWorkerForMSEH265Playback()
 
+```ts
+function supportWorkerForMSEH265Playback(): Promise<boolean>;
+```
+
+Resolve `true` if H265 playback can works when `workerForMSE: true`.
 
 ### mpegts.MSEPlayer
 ```typescript

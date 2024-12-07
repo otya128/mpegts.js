@@ -65,6 +65,10 @@ function getFeatureList() {
     return Features.getFeatureList();
 }
 
+function supportWorkerForMSEH265Playback() {
+    return Features.supportWorkerForMSEH265Playback();
+}
+
 
 // interfaces
 let mpegts = {};
@@ -72,6 +76,7 @@ let mpegts = {};
 mpegts.createPlayer = createPlayer;
 mpegts.isSupported = isSupported;
 mpegts.getFeatureList = getFeatureList;
+mpegts.supportWorkerForMSEH265Playback = supportWorkerForMSEH265Playback;
 
 mpegts.BaseLoader = BaseLoader;
 mpegts.LoaderStatus = LoaderStatus;

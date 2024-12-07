@@ -18,6 +18,7 @@
 
 import IOController from '../io/io-controller.js';
 import {createDefaultConfig} from '../config.js';
+import PlayerEngineDedicatedThread from '../player/player-engine-dedicated-thread';
 
 class Features {
 
@@ -25,14 +26,32 @@ class Features {
         const avc_aac_mime_type = 'video/mp4; codecs="avc1.42E01E,mp4a.40.2"';
         const support_w3c_mse = self.MediaSource && self.MediaSource.isTypeSupported(avc_aac_mime_type);
         const support_apple_mme = self.ManagedMediaSource && self.ManagedMediaSource.isTypeSupported(avc_aac_mime_type);
-        return support_w3c_mse || support_apple_mme;
+        return support_w3c_mse === true|| support_apple_mme === true;
     }
 
     static supportMSEH265Playback() {
         const hevc_mime_type = 'video/mp4; codecs="hvc1.1.6.L93.B0"';
         const support_w3c_mse = self.MediaSource && self.MediaSource.isTypeSupported(hevc_mime_type);
         const support_apple_mme = self.ManagedMediaSource && self.ManagedMediaSource.isTypeSupported(hevc_mime_type);
-        return support_w3c_mse || support_apple_mme;
+        return support_w3c_mse === true || support_apple_mme === true;
+    }
+
+    static supportWorkerForMSEH265Playback() {
+        return new Promise((resolve) => {
+            if (!PlayerEngineDedicatedThread.isSupported()) {
+                resolve(false);
+                return;
+            }
+            const blobUrl = URL.createObjectURL(new Blob([`
+                const hevc_mime_type = 'video/mp4; codecs="hvc1.1.6.L93.B0"';
+                const support_w3c_mse = self.MediaSource && self.MediaSource.isTypeSupported(hevc_mime_type);
+                const support_apple_mme = self.ManagedMediaSource && self.ManagedMediaSource.isTypeSupported(hevc_mime_type);
+                self.postMessage(support_w3c_mse === true || support_apple_mme === true);
+            `], { type: 'application/javascript' }));
+            const worker = new Worker(blobUrl);
+            worker.addEventListener('message', (e) => resolve(e.data));
+            URL.revokeObjectURL(blobUrl);
+        });
     }
 
     static supportNetworkStreamIO() {
