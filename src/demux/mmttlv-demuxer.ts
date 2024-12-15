@@ -123,7 +123,6 @@ class MMTTLVDemuxer extends BaseDemuxer {
     private system_clock_offset_?: number;
     private find_video_rap_ = true;
     private find_audio_rap_ = true;
-    private eventVersion = -1;
     private mpt_version_ = -1;
     public constructor(config: any) {
         super();
@@ -132,23 +131,6 @@ class MMTTLVDemuxer extends BaseDemuxer {
         this.reader_.addEventListener('mpt', (e) => this.onMPT(e));
         this.reader_.addEventListener('mpu', (e) => this.onMPU(e));
         this.reader_.addEventListener('ntp', (e) => this.onNTP(e));
-        // for debug
-        this.reader_.addEventListener('eit', (e) => {
-            if (e.table.tableId === 'EIT[p/f]') {
-                if (e.table.sectionNumber === 0 && e.table.currentNextIndicator) {
-                    if (e.table.versionNumber === this.eventVersion) {
-                        return;
-                    }
-                    this.eventVersion = e.table.versionNumber;
-                    const event = e.table.events[0];
-                    for (const desc of event.descriptors) {
-                        if (desc.tag === 'mhShortEvent') {
-                            Log.v(this.TAG, `event: ${new TextDecoder().decode(desc.eventName)} ${new TextDecoder().decode(desc.text)}`);
-                        }
-                    }
-                }
-            }
-        })
         this.config_ = config;
     }
 
@@ -233,6 +215,7 @@ class MMTTLVDemuxer extends BaseDemuxer {
         let audio_track_index = 0;
         let main_audio_packet_id = -1;
         let selected_audio_packet_id = -1;
+        let main_audio_group_tag = -1;
         const selectable_audios = new Set<number>();
         for (const asset of table.assets) {
             const packet_id = asset.locations[0]?.packetId;
@@ -245,7 +228,19 @@ class MMTTLVDemuxer extends BaseDemuxer {
                         } else if (desc.streamType !== STREAM_TYPE_LATM_LOAS) {
                             selectable = false;
                         }
+                        switch (desc.componentType & MH_AUDIO_COMPONENT_TYPE_MASK_SOUND_MODE) {
+                            case MH_AUDIO_COMPONENT_TYPE_STEREO:
+                            case MH_AUDIO_COMPONENT_TYPE_5POINT1:
+                            case MH_AUDIO_COMPONENT_TYPE_7POINT1:
+                                break;
+                            default:
+                                selectable = false;
+                                break;
+                        }
                         if (desc.mainComponentFlag) {
+                            main_audio_group_tag = desc.simulcastGroupTag;
+                        }
+                        if (desc.mainComponentFlag && selectable) {
                             main_audio_packet_id = packet_id;
                         }
                         if (this.selected_audio_component_tag_ === desc.componentTag) {
@@ -259,6 +254,29 @@ class MMTTLVDemuxer extends BaseDemuxer {
             }
         }
         if (selected_audio_packet_id === -1) {
+            if (main_audio_packet_id === -1) {
+                for (const asset of table.assets) {
+                    const packet_id = asset.locations[0]?.packetId;
+                    if (!selectable_audios.has(packet_id)) {
+                        continue;
+                    }
+                    if (asset.assetType !== MMT_ASSET_TYPE_MP4A) {
+                        continue;
+                    }
+                    for (const desc of asset.assetDescriptors) {
+                        if (desc.tag !== 'mhAudioComponent') {
+                            continue;
+                        }
+                        if (main_audio_packet_id === -1 && desc.simulcastGroupTag === main_audio_group_tag) {
+                            main_audio_packet_id = packet_id;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (main_audio_packet_id === -1) {
+                selected_audio_packet_id = selectable_audios.keys().next().value ?? -1;
+            }
             selected_audio_packet_id = main_audio_packet_id;
         }
         if (mpt_changed) {
